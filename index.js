@@ -27,6 +27,13 @@ const run = async () => {
     console.log("db connected");
     // our APIs
 
+    // get my bookings
+    app.get("/booking", async (req, res) => {
+      const email = req.query.email;
+      const query = { patientEmail: email };
+      const bookings = await bookingCollection.find(query).toArray();
+      res.send({ success: true, data: bookings });
+    });
     // post data to booking
     app.post("/booking", async (req, res) => {
       const booking = req.body;
