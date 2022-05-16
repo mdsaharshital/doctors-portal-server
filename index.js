@@ -44,7 +44,36 @@ const run = async () => {
     console.log("db connected");
     // our APIs
 
-    // put method to get users
+    // fetch all users from db
+    app.get("/users", verifyJWT, async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    // get admin role
+    app.get("/admin/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const result = await userCollection.findOne({ email: email });
+      const isAdmin = result.role === "admin";
+      res.send({ admin: isAdmin });
+    });
+    // set role of admin
+    app.put("/user/admin/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const requester = req.decoded.email;
+      const requesterAcc = await userCollection.findOne({ email: requester });
+      if (requesterAcc.role === "admin") {
+        const filter = { email: email };
+        const updateDoc = {
+          $set: { role: "admin" },
+        };
+        const result = await userCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } else {
+        res.status(403).send({ message: "Access denied" });
+      }
+    });
+    // put method to update users
     app.put("/user/:email", async (req, res) => {
       const email = req.params.email;
       const user = req.body;
@@ -58,7 +87,7 @@ const run = async () => {
       const token = jwt.sign(
         { email: email },
         process.env.ACCESS_TOKEN_SECRETE,
-        { expiresIn: "1h" }
+        { expiresIn: "1d" }
       );
       res.send({ success: true, message: "User updated", data: result, token });
     });
