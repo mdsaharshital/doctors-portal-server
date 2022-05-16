@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
@@ -24,9 +25,28 @@ const run = async () => {
       .db("doctors_portal")
       .collection("services");
     const bookingCollection = client.db("doctors_portal").collection("booking");
+    const userCollection = client.db("doctors_portal").collection("user");
     console.log("db connected");
     // our APIs
 
+    // put method to get users
+    app.put("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      console.log(user);
+      const filter = { email: email };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: user,
+      };
+      const result = await userCollection.updateOne(filter, updateDoc, options);
+      const token = jwt.sign(
+        { email: email },
+        process.env.ACCESS_TOKEN_SECRETE,
+        { expiresIn: "1h" }
+      );
+      res.send({ success: true, message: "User updated", data: result, token });
+    });
     // get my bookings
     app.get("/booking", async (req, res) => {
       const email = req.query.email;
