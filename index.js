@@ -17,7 +17,22 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
   serverApi: ServerApiVersion.v1,
 });
-
+//
+// verify jwt
+function verifyJWT(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRETE, function (err, decoded) {
+    if (err) {
+      return res.status(403).send({ message: "Access denied" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+}
 const run = async () => {
   try {
     await client.connect();
@@ -48,11 +63,16 @@ const run = async () => {
       res.send({ success: true, message: "User updated", data: result, token });
     });
     // get my bookings
-    app.get("/booking", async (req, res) => {
+    app.get("/booking", verifyJWT, async (req, res) => {
       const email = req.query.email;
       const query = { patientEmail: email };
-      const bookings = await bookingCollection.find(query).toArray();
-      res.send({ success: true, data: bookings });
+      const decodedEmail = req.decoded.email;
+      if (email === decodedEmail) {
+        const bookings = await bookingCollection.find(query).toArray();
+        return res.send({ success: true, data: bookings });
+      } else {
+        return res.status(403).send({ message: "Access denied" });
+      }
     });
     // post data to booking
     app.post("/booking", async (req, res) => {
