@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 const app = express();
@@ -174,6 +174,13 @@ const run = async () => {
       const cursor = bookingCollection.find(query);
       const services = await cursor.toArray();
       res.send({ success: true, data: services });
+    });
+    // get payment data using ID
+    app.get("/payment/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const payInfo = await bookingCollection.findOne(query);
+      res.send(payInfo);
     });
     // get all available data
     app.get("/available", async (req, res) => {
