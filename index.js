@@ -1,10 +1,16 @@
 const express = require("express");
+require("dotenv").config();
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRETE_KEY);
 const port = process.env.PORT || 5000;
 const app = express();
+
+// Programming Hero11:30 PM
+// https://www.youtube.com/watch?v=jc6oyMPtGsg
+
+// https://www.youtube.com/watch?v=JLKzr83xZGo
 
 //----- middleware ----------
 app.use(cors());
@@ -42,6 +48,9 @@ const run = async () => {
     const bookingCollection = client.db("doctors_portal").collection("booking");
     const userCollection = client.db("doctors_portal").collection("user");
     const doctorCollection = client.db("doctors_portal").collection("doctors");
+    const paymentCollection = client
+      .db("doctors_portal")
+      .collection("payments");
     console.log("db connected");
 
     // verify
@@ -200,6 +209,43 @@ const run = async () => {
       });
       res.send({ success: true, data: services });
     });
+    //
+    //-----------
+    // ALL PAYMENTS HERE=>
+    //-----------
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const service = req.body;
+      const price = service.price;
+      const amount = price * 100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.patch("/booking/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const payment = req.body;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId,
+        },
+      };
+      const updateBooking = await bookingCollection.updateOne(
+        filter,
+        updatedDoc
+      );
+      const result = await paymentCollection.insertOne(payment);
+      res.send(result);
+    });
+
+    //---------
   } finally {
     // console.log(error);
   }
